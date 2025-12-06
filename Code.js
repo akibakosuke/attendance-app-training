@@ -72,7 +72,7 @@ function handleClockIn(data) {
 function handleClockOut(data) {
     const { userId, userName } = data;
     const now = new Date();
-    const dateStr = formatDate(now); // 今日の日付 (例: '2025/12/07')
+    const dateStr = formatDate(now); // ✅ 修正済み：定義はここ一か所のみ
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
@@ -113,7 +113,6 @@ function handleClockOut(data) {
     }
 
     // Calculate duration
-    // startTime を Date オブジェクトで作成する際も、dateStr を使用することでタイムゾーンの問題を回避
     const startTime = new Date(`${dateStr} ${clockInTimeStr}`);
     const durationMs = now.getTime() - startTime.getTime();
     const durationStr = formatDuration(durationMs);

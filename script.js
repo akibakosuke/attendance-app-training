@@ -2,7 +2,7 @@
  * Configuration
  * REPLACE THIS URL with your deployed GAS Web App URL
  */
-const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw2OXzBmGkMvJPDWR-qVm1dwGg_Aw_OJuFspy9ySFxRSh1IFdpIlslozvwXttjk6OqHMg/exec'; // TODO: User needs to update this
+const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwM14d_sPKtQqJChW2EaDccrvodUqwNnWFcPSubK3jp9NVxPtNiEq1Gf4FkU90yuLeR1A/exec'; // TODO: User needs to update this
 
 // User Info (Simulation)
 // In a real app, this might come from login or URL parameters
