@@ -50,17 +50,21 @@ function doPost(e) {
 
 /**
  * Handle Clock In Action
+ * * 修正点: A列に日付文字列ではなくDateオブジェクト (now) を直接書き込むことで、
+ * スプレッドシート側で確実に日付として認識されるようにした。
  */
 function handleClockIn(data) {
     const { userId, userName } = data;
     const now = new Date();
-    const dateStr = formatDate(now);
+    // const dateStr = formatDate(now); // 以前のコード
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
-    // Format: 日付, 研修生ID, 氏名, 出勤時刻, 退勤時刻, 勤務時間
-    sheet.appendRow([dateStr, userId, userName, timeStr, '', '']);
+    // Format: 日付(Dateオブジェクト), 研修生ID, 氏名, 出勤時刻, 退勤時刻, 勤務時間
+    sheet.appendRow([now, userId, userName, timeStr, '', '']); // ✅ 変更後: Dateオブジェクトを書き込む
 
+    // LINEメッセージはformatDateを使って作成
+    const dateStr = formatDate(now);
     sendLineMessage(`【出勤】\n${userName}\n${dateStr} ${timeStr}`);
 
     return { status: 'success', message: 'Clocked in successfully', time: timeStr };
@@ -68,11 +72,13 @@ function handleClockIn(data) {
 
 /**
  * Handle Clock Out Action
+ * * 修正点: 以前の修正で構文エラーが解消し、かつ日付の読み取りロジックが堅牢化されているため、
+ * handleClockInの修正により、この関数は正常に動作するはずです。
  */
 function handleClockOut(data) {
     const { userId, userName } = data;
     const now = new Date();
-    const dateStr = formatDate(now); // ✅ 修正済み：定義はここ一か所のみ
+    const dateStr = formatDate(now); // 修正済み：定義はここ一か所のみ
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
@@ -92,6 +98,7 @@ function handleClockOut(data) {
             try {
                 // スプレッドシートの値 (Dateオブジェクト or 文字列) をDateオブジェクトに変換してから、
                 // 標準形式 ('yyyy/MM/dd') の文字列に変換して比較に備える。
+                // handleClockInの修正により、row[0]はDateオブジェクトになることが期待される。
                 const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
                 rowDateStr = formatDate(dateObj);
             } catch (e) {
