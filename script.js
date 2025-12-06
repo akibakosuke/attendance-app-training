@@ -93,11 +93,7 @@ function updateUI() {
 
 // API Calls
 async function callApi(action, payload = {}) {
-    if (GAS_WEB_APP_URL === 'https://script.google.com/macros/s/AKfycbzxVv0SqzaBPeFFBpM3HLBzt9OWDI3WPtIpw3NpGcr7_vBRs19SKdO_WX1p_U-wUiOicQ/exec') {
-        alert('エラー：GAS Web App URLが設定されていません。script.jsを確認してください。');
-        return null;
-    }
-
+    
     loadingOverlay.classList.remove('hidden');
 
     const data = {
