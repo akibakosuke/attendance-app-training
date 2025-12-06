@@ -49,6 +49,7 @@ function doPost(e) {
 
 /**
  * Handle Clock In Action
+ * 修正済み: A列にDateオブジェクト (now) を直接書き込み、日付記録の確実性を向上。
  */
 function handleClockIn(data) {
     const { userId, userName } = data;
@@ -67,7 +68,8 @@ function handleClockIn(data) {
 
 /**
  * Handle Clock Out Action
- * 最終修正: 出勤時刻データがDateオブジェクトとして読み込まれた場合に対応。
+ * 最終修正: 出勤時刻データ（D列）がどのような形式で読み込まれても、
+ * formatTimeでHH:mm文字列に変換し、NaNを防ぐ最も堅牢なロジックを実装。
  */
 function handleClockOut(data) {
     const { userId, userName } = data;
@@ -90,6 +92,7 @@ function handleClockOut(data) {
         let rowDateStr = '';
         if (row[0]) {
             try {
+                // A列の値から日付オブジェクトを取得し、sheetDateに保存
                 const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
                 rowDateStr = formatDate(dateObj);
                 sheetDate = dateObj; 
@@ -101,12 +104,24 @@ function handleClockOut(data) {
         if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
             rowIndex = i + 1; 
             
-            // ⭐️ 最終修正ロジック: row[3]がDateオブジェクトかチェックし、文字列に変換
             let clockInValue = row[3];
-            if (clockInValue instanceof Date) {
-                clockInTimeStr = formatTime(clockInValue); // DateオブジェクトからHH:mm文字列を取得
+            
+            // ⭐️ 最終修正ロジック：D列の値をDateオブジェクトに強制変換してからHH:mm文字列を取得
+            let timeValueForFormat = clockInValue;
+            
+            if (typeof clockInValue === 'number' && clockInValue < 1) {
+                // シリアル値(数値)として読み込まれた場合: 基準日と結合してDateオブジェクト化
+                const baseDate = new Date(1899, 11, 30, 0, 0, 0, 0);
+                timeValueForFormat = new Date(baseDate.getTime() + clockInValue * 24 * 60 * 60 * 1000);
+            } else if (typeof clockInValue === 'string') {
+                // 文字列の場合: HH:mm形式か確認し、Dateオブジェクト化を試みる
+                timeValueForFormat = new Date(`2000/01/01 ${clockInValue.trim()}`);
+            }
+            
+            if (timeValueForFormat instanceof Date && !isNaN(timeValueForFormat.getTime())) {
+                clockInTimeStr = formatTime(timeValueForFormat);
             } else {
-                clockInTimeStr = String(clockInValue).trim(); // 文字列の場合はトリム
+                throw new Error(`エラー: 出勤時刻データが認識できません。スプレッドシートの値: ${clockInValue}`);
             }
             
             break;
@@ -126,9 +141,9 @@ function handleClockOut(data) {
     // 出勤時刻文字列を HH, mm に分解
     const timeParts = clockInTimeStr.split(':').map(Number);
     
-    // 🔴 形式不正チェック
+    // HH:mm形式であることを最終確認
     if (timeParts.length !== 2 || timeParts.some(isNaN)) {
-        throw new Error('エラー: 出勤時刻の形式が不正です。'); 
+        throw new Error(`エラー: 出勤時刻(${clockInTimeStr})の形式が不正です。`); 
     }
     const [inHours, inMinutes] = timeParts;
 
