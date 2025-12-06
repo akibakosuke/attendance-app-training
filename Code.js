@@ -60,7 +60,7 @@ function handleClockIn(data) {
 
     const sheet = getSheet('打刻記録');
     // A列にフルタイムスタンプ (now)、D列に出勤時刻文字列 (timeStr) を記録
-    sheet.appendRow([now, userId, userName, timeStr, '', '']); 
+    sheet.appendRow([now, userId, userName, timeStr, '', '']);
 
     const dateStr = formatDate(now);
     sendLineMessage(`【出勤】\n${userName}\n${dateStr} ${timeStr}`);
@@ -70,12 +70,12 @@ function handleClockIn(data) {
 
 /**
  * Handle Clock Out Action
- * 最終修正: 勤務時間計算をA列のフルタイムスタンプ (sheetDate) に一本化。
+ * 勤務時間計算をA列のフルタイムスタンプ (sheetDate) に一本化。
  */
 function handleClockOut(data) {
     const { userId, userName } = data;
     const now = new Date(); // 退勤時刻（フルタイムスタンプ）
-    const dateStr = formatDate(now); 
+    const dateStr = formatDate(now);
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
@@ -96,7 +96,7 @@ function handleClockOut(data) {
                 // A列の値から日付オブジェクトを取得し、sheetDateに保存
                 const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
                 rowDateStr = formatDate(dateObj);
-                sheetDate = dateObj; 
+                sheetDate = dateObj;
             } catch (e) {
                 // 日付解析エラー
                 rowDateStr = String(row[0]);
@@ -105,11 +105,11 @@ function handleClockOut(data) {
 
         // 検索条件: 同日、同一ユーザーID、かつ退勤時刻（E列）が空
         if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
-            rowIndex = i + 1; 
-            
+            rowIndex = i + 1;
+
             // D列の値（出勤時刻）は、通知用としてそのまま取得
-            clockInTimeStr = String(row[3]).trim(); 
-            
+            clockInTimeStr = String(row[3]).trim();
+
             break;
         }
     }
@@ -117,25 +117,25 @@ function handleClockOut(data) {
     if (rowIndex === -1) {
         throw new Error('出勤記録が見つかりません。出勤打刻をしていませんか？');
     }
-    
+
     // 勤務時間計算ロジック
-    
+
     if (!sheetDate || isNaN(sheetDate.getTime())) {
         throw new Error('エラー: 出勤日時の情報が無効です。');
     }
 
     // 勤務時間の計算: now (退勤時刻) と sheetDate (出勤時刻+日付) の差で直接計算
     const durationMs = now.getTime() - sheetDate.getTime();
-    
+
     if (isNaN(durationMs) || durationMs <= 0) {
         throw new Error('エラー: 勤務時間の計算に失敗しました (計算結果がゼロ以下)。');
     }
-    
+
     const durationStr = formatDuration(durationMs);
 
     // Update row (E列に退勤時刻、F列に勤務時間を記入)
-    sheet.getRange(rowIndex, 5).setValue(timeStr); 
-    sheet.getRange(rowIndex, 6).setValue(durationStr); 
+    sheet.getRange(rowIndex, 5).setValue(timeStr);
+    sheet.getRange(rowIndex, 6).setValue(durationStr);
 
     // Send LINE Notification
     sendLineMessage(`【退勤】\n${userName}\n出勤：${clockInTimeStr}\n退勤：${timeStr}\n勤務：${durationStr}`);
