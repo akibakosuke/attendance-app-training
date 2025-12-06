@@ -56,6 +56,7 @@ function handleClockIn(data) {
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
+    // A列にDateオブジェクト、D列に出勤時刻文字列
     sheet.appendRow([now, userId, userName, timeStr, '', '']); 
 
     const dateStr = formatDate(now);
@@ -66,8 +67,7 @@ function handleClockIn(data) {
 
 /**
  * Handle Clock Out Action
- * 最終修正: NaNを防ぐため、DateオブジェクトのsetHours/setMinutesメソッドを使用して
- * 出勤時刻のDateオブジェクトを安全に構築するように変更。
+ * 最終修正: 出勤時刻データがDateオブジェクトとして読み込まれた場合に対応。
  */
 function handleClockOut(data) {
     const { userId, userName } = data;
@@ -79,12 +79,11 @@ function handleClockOut(data) {
     const dataRange = sheet.getDataRange();
     const values = dataRange.getValues();
 
-    // Find the last clock-in record for this user today that doesn't have a clock-out time
     let rowIndex = -1;
-    let clockInTimeStr = '';
-    let sheetDate = null; // ⭐️ 追加: シートから読み込んだ日付オブジェクトを保持
+    let clockInTimeStr = ''; 
+    let sheetDate = null; 
 
-    // i >= 1: ヘッダー行 (i=0) はスキップし、最終行から上に向かってループ
+    // 検索ループ
     for (let i = values.length - 1; i >= 1; i--) {
         const row = values[i];
 
@@ -93,15 +92,23 @@ function handleClockOut(data) {
             try {
                 const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
                 rowDateStr = formatDate(dateObj);
-                sheetDate = dateObj; // ⭐️ 成功した日付オブジェクトを保持
+                sheetDate = dateObj; 
             } catch (e) {
                 rowDateStr = String(row[0]);
             }
         }
 
         if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
-            rowIndex = i + 1;
-            clockInTimeStr = String(row[3]).trim(); 
+            rowIndex = i + 1; 
+            
+            // ⭐️ 最終修正ロジック: row[3]がDateオブジェクトかチェックし、文字列に変換
+            let clockInValue = row[3];
+            if (clockInValue instanceof Date) {
+                clockInTimeStr = formatTime(clockInValue); // DateオブジェクトからHH:mm文字列を取得
+            } else {
+                clockInTimeStr = String(clockInValue).trim(); // 文字列の場合はトリム
+            }
+            
             break;
         }
     }
@@ -110,29 +117,29 @@ function handleClockOut(data) {
         throw new Error('出勤記録が見つかりません。出勤打刻をしていませんか？');
     }
     
-    // ⭐️ 勤務時間計算ロジックを安全な方法に変更 ⭐️
+    // 勤務時間計算ロジック
     
-    // 1. sheetDateが有効か確認
     if (!sheetDate || isNaN(sheetDate.getTime())) {
         throw new Error('エラー: スプレッドシートの日付情報が無効です。');
     }
 
-    // 2. 出勤時刻文字列を HH, mm に分解
+    // 出勤時刻文字列を HH, mm に分解
     const timeParts = clockInTimeStr.split(':').map(Number);
+    
+    // 🔴 形式不正チェック
     if (timeParts.length !== 2 || timeParts.some(isNaN)) {
-        throw new Error('エラー: 出勤時刻の形式が不正です。');
+        throw new Error('エラー: 出勤時刻の形式が不正です。'); 
     }
     const [inHours, inMinutes] = timeParts;
 
-    // 3. sheetDate (日付) に出勤時刻をセットしてstartTimeを生成
+    // sheetDate (日付) に出勤時刻をセットしてstartTimeを生成
     let startTime = new Date(sheetDate);
-    startTime.setHours(inHours, inMinutes, 0, 0); // 時、分、秒、ミリ秒をセット
+    startTime.setHours(inHours, inMinutes, 0, 0); 
     
-    // 4. 勤務時間を計算
+    // 勤務時間を計算
     const durationMs = now.getTime() - startTime.getTime();
     
     if (isNaN(durationMs) || durationMs < 0) {
-        // durationMsがマイナスになるのは通常、退勤が出勤より早い時刻になった場合（ありえない）
         throw new Error('エラー: 勤務時間の計算に失敗しました (時刻情報が不正)。');
     }
     
