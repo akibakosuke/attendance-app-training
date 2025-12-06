@@ -1,11 +1,11 @@
 const CACHE_NAME = 'attendance-app-v1';
 const REPO_NAME = '/attendance-app-training';
 const ASSETS = [
-    './',
-    './index.html',
-    './style.css',
-    './script.js',
-    './manifest.json'
+    REPO_NAME + './',
+    REPO_NAME + './index.html',
+    REPO_NAME + './style.css',
+    REPO_NAME + './script.js',
+    REPO_NAME + './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
