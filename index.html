@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勤怠打刻アプリ</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Attendance App</h1>
+            <div class="user-info">
+                <span id="userIdDisplay">User ID: Loading...</span>
+                <span id="userNameDisplay">Name: Loading...</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="clock-display">
+                <div id="currentDate">YYYY/MM/DD</div>
+                <div id="currentTime">00:00</div>
+            </div>
+
+            <div class="status-card">
+                <span class="status-label">Current Status</span>
+                <div id="statusValue" class="status-value">Loading...</div>
+            </div>
+
+            <div class="action-buttons">
+                <!-- Clock In Button -->
+                <button id="clockInBtn" class="btn btn-primary btn-large hidden">
+                    <span class="icon">☀️</span> 出勤
+                </button>
+
+                <!-- Clock Out Button -->
+                <button id="clockOutBtn" class="btn btn-secondary btn-large hidden">
+                    <span class="icon">🌙</span> 退勤
+                </button>
+            </div>
+
+            <!-- Task Report Button -->
+            <button id="showReportModalBtn" class="btn btn-outline margin-top">
+                <span class="icon">📝</span> 課題完了報告
+            </button>
+        </main>
+
+        <footer>
+            <small>&copy; 2025 VEXUM Training</small>
+        </footer>
+    </div>
+
+    <!-- Modal -->
+    <div id="reportModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>課題完了報告</h2>
+                <button id="closeModalBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>作成したアプリのURLを入力してください。</p>
+                <input type="url" id="appUrlInput" placeholder="https://..." required>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelReportBtn" class="btn btn-text">キャンセル</button>
+                <button id="submitReportBtn" class="btn btn-primary">送信</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
