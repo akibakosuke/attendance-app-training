@@ -2,7 +2,7 @@
  * Configuration
  * REPLACE THIS URL with your deployed GAS Web App URL
  */
-const GAS_WEB_APP_URL = 'YOUR_GAS_WEB_APP_URL_HERE'; // TODO: User needs to update this
+const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzxVv0SqzaBPeFFBpM3HLBzt9OWDI3WPtIpw3NpGcr7_vBRs19SKdO_WX1p_U-wUiOicQ/exec'; // TODO: User needs to update this
 
 // User Info (Simulation)
 // In a real app, this might come from login or URL parameters
@@ -93,7 +93,7 @@ function updateUI() {
 
 // API Calls
 async function callApi(action, payload = {}) {
-    if (GAS_WEB_APP_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+    if (GAS_WEB_APP_URL === 'https://script.google.com/macros/s/AKfycbzxVv0SqzaBPeFFBpM3HLBzt9OWDI3WPtIpw3NpGcr7_vBRs19SKdO_WX1p_U-wUiOicQ/exec') {
         alert('エラー：GAS Web App URLが設定されていません。script.jsを確認してください。');
         return null;
     }
