@@ -50,18 +50,16 @@ function doPost(e) {
 
 /**
  * Handle Clock In Action
- * * 修正点: A列に日付文字列ではなくDateオブジェクト (now) を直接書き込むことで、
- * スプレッドシート側で確実に日付として認識されるようにした。
+ * 修正済み: A列にDateオブジェクト (now) を直接書き込み、日付記録の確実性を向上。
  */
 function handleClockIn(data) {
     const { userId, userName } = data;
     const now = new Date();
-    // const dateStr = formatDate(now); // 以前のコード
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
     // Format: 日付(Dateオブジェクト), 研修生ID, 氏名, 出勤時刻, 退勤時刻, 勤務時間
-    sheet.appendRow([now, userId, userName, timeStr, '', '']); // ✅ 変更後: Dateオブジェクトを書き込む
+    sheet.appendRow([now, userId, userName, timeStr, '', '']);
 
     // LINEメッセージはformatDateを使って作成
     const dateStr = formatDate(now);
@@ -72,13 +70,12 @@ function handleClockIn(data) {
 
 /**
  * Handle Clock Out Action
- * * 修正点: 以前の修正で構文エラーが解消し、かつ日付の読み取りロジックが堅牢化されているため、
- * handleClockInの修正により、この関数は正常に動作するはずです。
+ * 修正済み: clockInTimeStrを読み込む際に.trim()を使用し、計算エラー(NaN)を防ぐ。
  */
 function handleClockOut(data) {
     const { userId, userName } = data;
     const now = new Date();
-    const dateStr = formatDate(now); // 修正済み：定義はここ一か所のみ
+    const dateStr = formatDate(now);
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
@@ -98,7 +95,6 @@ function handleClockOut(data) {
             try {
                 // スプレッドシートの値 (Dateオブジェクト or 文字列) をDateオブジェクトに変換してから、
                 // 標準形式 ('yyyy/MM/dd') の文字列に変換して比較に備える。
-                // handleClockInの修正により、row[0]はDateオブジェクトになることが期待される。
                 const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
                 rowDateStr = formatDate(dateObj);
             } catch (e) {
@@ -110,7 +106,10 @@ function handleClockOut(data) {
         // Check Date (col 0), UserID (col 1), and if ClockOut (col 4) is empty
         if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
             rowIndex = i + 1; // 1-based index (スプレッドシートの行番号)
-            clockInTimeStr = row[3];
+
+            // ⭐️ 最終修正点: 読み込んだ出勤時刻の文字列を.trim()でクリーンアップ
+            clockInTimeStr = String(row[3]).trim();
+
             break;
         }
     }
@@ -122,6 +121,11 @@ function handleClockOut(data) {
     // Calculate duration
     const startTime = new Date(`${dateStr} ${clockInTimeStr}`);
     const durationMs = now.getTime() - startTime.getTime();
+
+    if (isNaN(durationMs)) {
+        throw new Error('エラー: 勤務時間の計算に必要な日付情報が不正です。');
+    }
+
     const durationStr = formatDuration(durationMs);
 
     // Update row
