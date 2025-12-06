@@ -9,8 +9,6 @@ const LINE_GROUP_ID = 'C5a5b36e27a78ed6cfbb74839a8a9d04e';
  * This is called once per execution to guarantee setup.
  */
 function ensureAllSheetsExist() {
-    // 3つのシートすべてに対して getSheet を呼び出すことで、
-    // 存在しない場合は作成とヘッダー追加を保証します。
     getSheet('研修生マスタ');
     getSheet('打刻記録');
     getSheet('課題完了記録');
@@ -20,7 +18,6 @@ function ensureAllSheetsExist() {
  * Handle HTTP POST requests
  */
 function doPost(e) {
-    // 【修正箇所】最初に全シートの存在をチェックし、なければ作成する
     ensureAllSheetsExist();
 
     try {
@@ -60,12 +57,10 @@ function handleClockIn(data) {
     const dateStr = formatDate(now);
     const timeStr = formatTime(now);
 
-    // Record to '打刻記録' sheet (Sheet 2)
     const sheet = getSheet('打刻記録');
     // Format: 日付, 研修生ID, 氏名, 出勤時刻, 退勤時刻, 勤務時間
     sheet.appendRow([dateStr, userId, userName, timeStr, '', '']);
 
-    // Send LINE Notification
     sendLineMessage(`【出勤】\n${userName}\n${dateStr} ${timeStr}`);
 
     return { status: 'success', message: 'Clocked in successfully', time: timeStr };
@@ -77,7 +72,7 @@ function handleClockIn(data) {
 function handleClockOut(data) {
     const { userId, userName } = data;
     const now = new Date();
-    const dateStr = formatDate(now);
+    const dateStr = formatDate(now); // 今日の日付 (例: '2025/12/07')
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
@@ -88,26 +83,37 @@ function handleClockOut(data) {
     let rowIndex = -1;
     let clockInTimeStr = '';
 
-    for (let i = values.length - 1; i >= 0; i--) {
+    // i >= 1: ヘッダー行 (i=0) はスキップし、最終行から上に向かってループ
+    for (let i = values.length - 1; i >= 1; i--) {
         const row = values[i];
-        
-        // 【修正箇所】row[0]を比較前にformatDateで文字列に変換することで、
-        // スプレッドシートが日付として扱っていても比較が成立するようにする。
-        const rowDateStr = (row[0] instanceof Date) ? formatDate(row[0]) : row[0];
+
+        let rowDateStr = '';
+        if (row[0]) {
+            try {
+                // スプレッドシートの値 (Dateオブジェクト or 文字列) をDateオブジェクトに変換してから、
+                // 標準形式 ('yyyy/MM/dd') の文字列に変換して比較に備える。
+                const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
+                rowDateStr = formatDate(dateObj);
+            } catch (e) {
+                // 不正な値が入っていた場合などに備える
+                rowDateStr = String(row[0]);
+            }
+        }
 
         // Check Date (col 0), UserID (col 1), and if ClockOut (col 4) is empty
         if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
-            rowIndex = i + 1; // 1-based index
+            rowIndex = i + 1; // 1-based index (スプレッドシートの行番号)
             clockInTimeStr = row[3];
             break;
         }
     }
 
     if (rowIndex === -1) {
-        throw new Error('出勤記録が見つかりません。');
+        throw new Error('出勤記録が見つかりません。出勤打刻をしていませんか？');
     }
 
     // Calculate duration
+    // startTime を Date オブジェクトで作成する際も、dateStr を使用することでタイムゾーンの問題を回避
     const startTime = new Date(`${dateStr} ${clockInTimeStr}`);
     const durationMs = now.getTime() - startTime.getTime();
     const durationStr = formatDuration(durationMs);
