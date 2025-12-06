@@ -93,7 +93,7 @@ function updateUI() {
 
 // API Calls
 async function callApi(action, payload = {}) {
-    
+
     loadingOverlay.classList.remove('hidden');
 
     const data = {
@@ -104,10 +104,6 @@ async function callApi(action, payload = {}) {
     };
 
     try {
-        // Use 'no-cors' mode if hosting on GitHub Pages and hitting GAS, 
-        // BUT 'no-cors' treats response as opaque (cant read JSON). 
-        // For GAS doPost to work with CORS from simple fetch, GAS script must return valid TextOutput.
-        // Standard fetch:
         const response = await fetch(GAS_WEB_APP_URL, {
             method: 'POST',
             mode: 'cors', // Important for GAS
@@ -117,12 +113,23 @@ async function callApi(action, payload = {}) {
             body: JSON.stringify(data)
         });
 
-        const result = await response.json();
+        // 【修正箇所: response.json() を response.text() に変更】
+        const text = await response.text();
+        if (!text) return null; // レスポンスがない場合は処理を終了
+        const result = JSON.parse(text);
+
+        // GAS側でエラーが発生した場合（result.status === 'error'）
+        if (result.status === 'error') {
+            console.error('GAS Error:', result.message);
+            alert(`GASエラー: ${result.message}`);
+            return null;
+        }
+
         return result;
 
     } catch (error) {
-        console.error('API Error:', error);
-        alert('通信エラーが発生しました。');
+        console.error('API/Parsing Error:', error);
+        alert('通信エラーが発生しました。または、レスポンスの解析に失敗しました。');
         return null;
     } finally {
         loadingOverlay.classList.add('hidden');
@@ -144,6 +151,7 @@ clockOutBtn.addEventListener('click', async () => {
     if (!confirm('退勤しますか？')) return;
 
     const result = await callApi('clockOut');
+    // 結果が成功（success）でない場合、GAS側でエラーアラートが既に出ている
     if (result && result.status === 'success') {
         alert(`退勤しました！\n勤務時間: ${result.duration}`);
         saveState('clocked_out');

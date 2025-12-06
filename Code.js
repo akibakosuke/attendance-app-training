@@ -5,9 +5,24 @@ const LINE_ACCESS_TOKEN = 'YOZ7UftinQaO3OyBDaloYu4cXzhYtLzmqBzAGNvCIJRg7h+DoqsX0
 const LINE_GROUP_ID = 'C5a5b36e27a78ed6cfbb74839a8a9d04e';
 
 /**
+ * Helper: Ensures all required sheets exist and have headers.
+ * This is called once per execution to guarantee setup.
+ */
+function ensureAllSheetsExist() {
+    // 3つのシートすべてに対して getSheet を呼び出すことで、
+    // 存在しない場合は作成とヘッダー追加を保証します。
+    getSheet('研修生マスタ');
+    getSheet('打刻記録');
+    getSheet('課題完了記録');
+}
+
+/**
  * Handle HTTP POST requests
  */
 function doPost(e) {
+    // 【修正箇所】最初に全シートの存在をチェックし、なければ作成する
+    ensureAllSheetsExist();
+
     try {
         const data = JSON.parse(e.postData.contents);
         const action = data.action;
@@ -75,8 +90,13 @@ function handleClockOut(data) {
 
     for (let i = values.length - 1; i >= 0; i--) {
         const row = values[i];
+        
+        // 【修正箇所】row[0]を比較前にformatDateで文字列に変換することで、
+        // スプレッドシートが日付として扱っていても比較が成立するようにする。
+        const rowDateStr = (row[0] instanceof Date) ? formatDate(row[0]) : row[0];
+
         // Check Date (col 0), UserID (col 1), and if ClockOut (col 4) is empty
-        if (row[0] === dateStr && row[1] === userId && row[4] === '') {
+        if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
             rowIndex = i + 1; // 1-based index
             clockInTimeStr = row[3];
             break;
