@@ -2,7 +2,7 @@
  * LINE Messaging API Config
  */
 // 課題資料から取得したトークンを、改行・空白なしで設定
-const LINE_ACCESS_TOKEN = 'YOZ7UftinQa030yBDaloYu4cXzhYtLzmqBzAGNvCIJRg7h+DoqsX0n60Xdf0FZ9vI7/+VI0KgdWLHJ6yBmeAi6kPqz4+FZ3vpHQTBEAQSHA81c9tQLH/80P8UUyRpnHxvmJ0Q1aAjZWiraJe038tBgdB04t89/10/w1cDnyilFU=';
+const LINE_ACCESS_TOKEN = 'YOZ7UftinQaO3OyBDaloYu4cXzhYtLzmqBzAGNvCIJRg7h+DoqsX0n6OX dfOFZ9vI7/+VIOKgdWLHJ6yBmeAi6kPqz4+FZ3vpHQTBEAQSHA81c9tQL H/8oP8UUyRpnHxvmJ0QlaAjZWiraJeO38tBgdB04t89/1O/w1cDnyilFU =';
 // 課題資料から取得したグループID
 const LINE_GROUP_ID = 'C5a5b36e27a78ed6cfbb74839a8a9d04e';
 
