@@ -7,7 +7,7 @@ const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxh7geRjJu1Anqj
 // User Info (Simulation)
 // In a real app, this might come from login or URL parameters
 const USER_ID = 'user01';
-const USER_NAME = '田中太郎';
+const USER_NAME = '秋葉康介';
 
 // DOM Elements
 const currentDateEl = document.getElementById('currentDate');
