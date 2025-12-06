@@ -6,7 +6,6 @@ const LINE_GROUP_ID = 'C5a5b36e27a78ed6cfbb74839a8a9d04e';
 
 /**
  * Helper: Ensures all required sheets exist and have headers.
- * This is called once per execution to guarantee setup.
  */
 function ensureAllSheetsExist() {
     getSheet('研修生マスタ');
@@ -50,7 +49,6 @@ function doPost(e) {
 
 /**
  * Handle Clock In Action
- * 修正済み: A列にDateオブジェクト (now) を直接書き込み、日付記録の確実性を向上。
  */
 function handleClockIn(data) {
     const { userId, userName } = data;
@@ -58,10 +56,8 @@ function handleClockIn(data) {
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
-    // Format: 日付(Dateオブジェクト), 研修生ID, 氏名, 出勤時刻, 退勤時刻, 勤務時間
-    sheet.appendRow([now, userId, userName, timeStr, '', '']);
+    sheet.appendRow([now, userId, userName, timeStr, '', '']); 
 
-    // LINEメッセージはformatDateを使って作成
     const dateStr = formatDate(now);
     sendLineMessage(`【出勤】\n${userName}\n${dateStr} ${timeStr}`);
 
@@ -70,12 +66,13 @@ function handleClockIn(data) {
 
 /**
  * Handle Clock Out Action
- * 修正済み: clockInTimeStrを読み込む際に.trim()を使用し、計算エラー(NaN)を防ぐ。
+ * 最終修正: NaNを防ぐため、DateオブジェクトのsetHours/setMinutesメソッドを使用して
+ * 出勤時刻のDateオブジェクトを安全に構築するように変更。
  */
 function handleClockOut(data) {
     const { userId, userName } = data;
     const now = new Date();
-    const dateStr = formatDate(now);
+    const dateStr = formatDate(now); 
     const timeStr = formatTime(now);
 
     const sheet = getSheet('打刻記録');
@@ -85,6 +82,7 @@ function handleClockOut(data) {
     // Find the last clock-in record for this user today that doesn't have a clock-out time
     let rowIndex = -1;
     let clockInTimeStr = '';
+    let sheetDate = null; // ⭐️ 追加: シートから読み込んだ日付オブジェクトを保持
 
     // i >= 1: ヘッダー行 (i=0) はスキップし、最終行から上に向かってループ
     for (let i = values.length - 1; i >= 1; i--) {
@@ -93,23 +91,17 @@ function handleClockOut(data) {
         let rowDateStr = '';
         if (row[0]) {
             try {
-                // スプレッドシートの値 (Dateオブジェクト or 文字列) をDateオブジェクトに変換してから、
-                // 標準形式 ('yyyy/MM/dd') の文字列に変換して比較に備える。
                 const dateObj = (row[0] instanceof Date) ? row[0] : new Date(row[0]);
                 rowDateStr = formatDate(dateObj);
+                sheetDate = dateObj; // ⭐️ 成功した日付オブジェクトを保持
             } catch (e) {
-                // 不正な値が入っていた場合などに備える
                 rowDateStr = String(row[0]);
             }
         }
 
-        // Check Date (col 0), UserID (col 1), and if ClockOut (col 4) is empty
         if (rowDateStr === dateStr && row[1] === userId && row[4] === '') {
-            rowIndex = i + 1; // 1-based index (スプレッドシートの行番号)
-
-            // ⭐️ 最終修正点: 読み込んだ出勤時刻の文字列を.trim()でクリーンアップ
-            clockInTimeStr = String(row[3]).trim();
-
+            rowIndex = i + 1;
+            clockInTimeStr = String(row[3]).trim(); 
             break;
         }
     }
@@ -117,20 +109,38 @@ function handleClockOut(data) {
     if (rowIndex === -1) {
         throw new Error('出勤記録が見つかりません。出勤打刻をしていませんか？');
     }
-
-    // Calculate duration
-    const startTime = new Date(`${dateStr} ${clockInTimeStr}`);
-    const durationMs = now.getTime() - startTime.getTime();
-
-    if (isNaN(durationMs)) {
-        throw new Error('エラー: 勤務時間の計算に必要な日付情報が不正です。');
+    
+    // ⭐️ 勤務時間計算ロジックを安全な方法に変更 ⭐️
+    
+    // 1. sheetDateが有効か確認
+    if (!sheetDate || isNaN(sheetDate.getTime())) {
+        throw new Error('エラー: スプレッドシートの日付情報が無効です。');
     }
 
+    // 2. 出勤時刻文字列を HH, mm に分解
+    const timeParts = clockInTimeStr.split(':').map(Number);
+    if (timeParts.length !== 2 || timeParts.some(isNaN)) {
+        throw new Error('エラー: 出勤時刻の形式が不正です。');
+    }
+    const [inHours, inMinutes] = timeParts;
+
+    // 3. sheetDate (日付) に出勤時刻をセットしてstartTimeを生成
+    let startTime = new Date(sheetDate);
+    startTime.setHours(inHours, inMinutes, 0, 0); // 時、分、秒、ミリ秒をセット
+    
+    // 4. 勤務時間を計算
+    const durationMs = now.getTime() - startTime.getTime();
+    
+    if (isNaN(durationMs) || durationMs < 0) {
+        // durationMsがマイナスになるのは通常、退勤が出勤より早い時刻になった場合（ありえない）
+        throw new Error('エラー: 勤務時間の計算に失敗しました (時刻情報が不正)。');
+    }
+    
     const durationStr = formatDuration(durationMs);
 
     // Update row
-    sheet.getRange(rowIndex, 5).setValue(timeStr); // 退勤時刻 (Col E)
-    sheet.getRange(rowIndex, 6).setValue(durationStr); // 勤務時間 (Col F)
+    sheet.getRange(rowIndex, 5).setValue(timeStr); 
+    sheet.getRange(rowIndex, 6).setValue(durationStr); 
 
     // Send LINE Notification
     sendLineMessage(`【退勤】\n${userName}\n出勤：${clockInTimeStr}\n退勤：${timeStr}\n勤務：${durationStr}`);
@@ -146,12 +156,9 @@ function handleTaskReport(data) {
     const now = new Date();
     const dateTimeStr = formatDateTime(now);
 
-    // Record to '課題完了記録' sheet (Sheet 3)
     const sheet = getSheet('課題完了記録');
-    // Format: 完了日時, 研修生ID, 氏名, アプリURL, 判定
     sheet.appendRow([dateTimeStr, userId, userName, appUrl, '']);
 
-    // Send LINE Notification
     sendLineMessage(`【🎉課題完了報告🎉】\n研修生：${userName} (${userId})\n完了：${dateTimeStr}\n\nアプリURL: ${appUrl}\n\n確認をお願いします！`);
 
     return { status: 'success', message: 'Reported successfully' };
