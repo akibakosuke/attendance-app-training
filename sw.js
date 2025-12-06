@@ -1,4 +1,5 @@
 const CACHE_NAME = 'attendance-app-v1';
+const REPO_NAME = '/attendance-app-training';
 const ASSETS = [
     './',
     './index.html',
