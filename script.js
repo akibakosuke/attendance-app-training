@@ -147,12 +147,23 @@ clockInBtn.addEventListener('click', async () => {
     }
 });
 
+// Event Listeners
+// ... (clockInBtn のリスナーは省略)
+
 clockOutBtn.addEventListener('click', async () => {
     if (!confirm('退勤しますか？')) return;
 
     const result = await callApi('clockOut');
-    // 結果が成功（success）でない場合、GAS側でエラーアラートが既に出ている
-    if (result && result.status === 'success') {
+
+    // 【修正箇所】result が null の場合は、ここで処理を終了する
+    if (!result) {
+        // alert('通信エラーが発生しました。または、退勤処理に失敗しました。'); 
+        // ↑ エラーは callApi 内で既にアラート表示されているため不要
+        return;
+    }
+
+    // 結果が成功（success）の場合のみ、画面を更新する
+    if (result.status === 'success') {
         alert(`退勤しました！\n勤務時間: ${result.duration}`);
         saveState('clocked_out');
     }
